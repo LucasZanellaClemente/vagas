@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobAgent — Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #1e1e2e;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --pill-bg: #1e1e2e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+  }
+
+  /* TOPBAR mobile */
+  .topbar {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .hamburger { background: none; border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 22px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--border); color: var(--text); }
+  .nav-item.active { background: rgba(124,58,237,0.12); color: var(--accent); border-color: rgba(124,58,237,0.2); }
+
+  .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+  .status-badge { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; font-size: 11px; color: var(--accent3); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); box-shadow: 0 0 8px var(--accent3); animation: pulse 1.5s infinite; flex-shrink: 0; }
+
+  /* MAIN */
+  .main { padding: 36px 40px; overflow-y: auto; min-width: 0; }
+
+  /* PAGE */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+  .page-title span { color: var(--accent); }
+  .page-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .run-btn { background: var(--accent); color: white; border: none; padding: 11px 22px; border-radius: 8px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; box-shadow: 0 0 24px rgba(124,58,237,0.3); white-space: nowrap; flex-shrink: 0; }
+  .run-btn:hover { background: #6d28d9; box-shadow: 0 0 32px rgba(124,58,237,0.5); transform: translateY(-1px); }
+  .run-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card:nth-child(1)::before { background: var(--accent); }
+  .stat-card:nth-child(2)::before { background: var(--accent2); }
+  .stat-card:nth-child(3)::before { background: var(--accent3); }
+  .stat-card:nth-child(4)::before { background: var(--warn); }
+  .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
+  .stat-card:nth-child(1) .stat-value { color: var(--accent); }
+  .stat-card:nth-child(2) .stat-value { color: var(--accent2); }
+  .stat-card:nth-child(3) .stat-value { color: var(--accent3); }
+  .stat-card:nth-child(4) .stat-value { color: var(--warn); }
+  .stat-sub { font-size: 9px; color: var(--muted); margin-top: 4px; }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; min-width: 0; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* FORM */
+  .field { margin-bottom: 14px; }
+  .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+  .field-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.15s; }
+  .field-input:focus { border-color: var(--accent); }
+  .field-input::placeholder { color: var(--muted); }
+
+  .tags-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { background: var(--pill-bg); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 5px; }
+  .tag.active { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.4); color: var(--accent); }
+  .tag-x { font-size: 10px; color: var(--muted); cursor: pointer; }
+  .tag-x:hover { color: #ef4444; }
+
+  /* PLATFORMS */
+  .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .platform-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; font-size: 12px; min-width: 0; }
+  .platform-item.active { border-color: rgba(124,58,237,0.4); background: rgba(124,58,237,0.08); color: var(--accent); }
+  .platform-check { margin-left: auto; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+  .platform-item.active .platform-check { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* SALARY */
+  .salary-display { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent3); margin-bottom: 8px; }
+  input[type=range] { width: 100%; -webkit-appearance: none; height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent3) 0%, var(--accent3) 19%, var(--border) 19%); outline: none; margin-bottom: 6px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent3); cursor: pointer; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+  .range-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+
+  /* LEVEL BTNS */
+  .level-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .level-btn { flex: 1; min-width: 60px; padding: 8px 6px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 11px; background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .level-btn.active { border-color: rgba(6,182,212,0.4); background: rgba(6,182,212,0.1); color: var(--accent2); }
+
+  /* SCHEDULE */
+  .schedule-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .schedule-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 11px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .schedule-btn.active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1); color: var(--warn); }
+
+  /* TOGGLES */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-of-type { border-bottom: none; }
+  .toggle-label { font-size: 12px; }
+  .toggle-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--border); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* LOG */
+  .log-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .log-item:last-child { border-bottom: none; }
+  .log-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .log-time { color: var(--muted); flex-shrink: 0; width: 55px; }
+  .log-text { color: var(--text); flex: 1; line-height: 1.4; min-width: 0; word-break: break-word; }
+
+  /* SAVE BTN */
+  .save-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; margin-top: 14px; }
+  .save-btn:hover { background: rgba(124,58,237,0.1); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--accent3); color: white; padding: 12px 20px; border-radius: 8px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 200; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); }
+
+  /* VAGAS LIST */
+  .vagas-list { display: flex; flex-direction: column; gap: 12px; }
+  .vaga-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; transition: border-color 0.15s; }
+  .vaga-card:hover { border-color: rgba(124,58,237,0.3); }
+  .vaga-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .vaga-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
+  .vaga-empresa { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .vaga-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .vaga-tag { padding: 3px 8px; border-radius: 20px; font-size: 10px; border: 1px solid var(--border); color: var(--muted); }
+  .vaga-tag.plat-linkedin { border-color: rgba(6,182,212,0.4); color: var(--accent2); background: rgba(6,182,212,0.08); }
+  .vaga-tag.plat-infojobs { border-color: rgba(245,158,11,0.4); color: var(--warn); background: rgba(245,158,11,0.08); }
+  .vaga-tag.plat-indeed { border-color: rgba(16,185,129,0.4); color: var(--accent3); background: rgba(16,185,129,0.08); }
+  .vaga-tag.nivel { border-color: rgba(124,58,237,0.4); color: var(--accent); background: rgba(124,58,237,0.08); }
+  .vaga-link { font-size: 11px; color: var(--accent); text-decoration: none; }
+  .vaga-link:hover { text-decoration: underline; }
+  .vaga-status { font-size: 10px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+  .vaga-status.nova { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.3); }
+  .vaga-status.aplicada { background: rgba(124,58,237,0.1); color: var(--accent); border: 1px solid rgba(124,58,237,0.3); }
+  .aplicar-btn { display: inline-block; margin-top: 4px; padding: 7px 16px; background: var(--accent); color: white; border-radius: 8px; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; text-decoration: none; transition: all 0.15s; }
+  .aplicar-btn:hover { background: #6d28d9; transform: translateY(-1px); }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 12px; }
+
+  /* FILTER BAR */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .filter-chip { padding: 5px 12px; border-radius: 20px; font-size: 11px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; background: var(--surface); transition: all 0.15s; }
+  .filter-chip.active { border-color: rgba(124,58,237,0.4); color: var(--accent); background: rgba(124,58,237,0.08); }
+  .filter-count { margin-left: 4px; opacity: 0.6; }
+
+  /* DRAWER */
+  .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99; }
+  .drawer-overlay.open { display: block; }
+  .drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 28px 20px; display: flex; flex-direction: column; gap: 6px; z-index: 100; transform: translateX(-100%); transition: transform 0.25s ease; }
+  .drawer.open { transform: translateX(0); }
+  .drawer-close { position: absolute; top: 16px; right: 16px; background: none; border: 1px solid var(--border); color: var(--muted); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1024px) { .stats-row { grid-template-columns: repeat(2, 1fr); } .main { padding: 28px 24px; } }
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .topbar { display: flex; }
+    .main { padding: 20px 16px; }
+    .page-title { font-size: 20px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid2 { grid-template-columns: 1fr; gap: 14px; }
+  }
+  @media (max-width: 420px) {
+    .run-btn { width: 100%; text-align: center; }
+    .page-header { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- MOBILE TOPBAR -->
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>JobAgent</div>
+  <button class="hamburger" onclick="openDrawer()">☰</button>
+</div>
+
+<!-- MOBILE DRAWER -->
+<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px;padding:0 8px 20px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+    <div class="logo-dot"></div> JobAgent
+  </div>
+  <div class="nav-item active" onclick="navegarPara('filtros');closeDrawer()">⚙️ &nbsp;Filtros</div>
+  <div class="nav-item" onclick="navegarPara('vagas');closeDrawer()">📋 &nbsp;Vagas Encontradas</div>
+  <div class="nav-item" onclick="navegarPara('log');closeDrawer()">📡 &nbsp;Log de Atividade</div>
+  <div class="sidebar-footer">
+    <div class="status-badge"><div class="status-dot"></div><span id="drawer-status-txt">Verificando...</span></div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-dot"></div>JobAgent</div>
+    <div class="nav-item active" id="nav-filtros" onclick="navegarPara('filtros')">⚙️ &nbsp;Filtros</div>
+    <div class="nav-item" id="nav-vagas" onclick="navegarPara('vagas')">📋 &nbsp;Vagas Encontradas</div>
+    <div class="nav-item" id="nav-log" onclick="navegarPara('log')">📡 &nbsp;Log de Atividade</div>
+    <div class="sidebar-footer">
+      <div class="status-badge"><div class="status-dot"></div><span id="status-txt">Verificando...</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ── STATS (sempre visível) ── -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total no Banco</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub" id="stat-prox">próximo ciclo: —</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Aplicações</div>
+        <div class="stat-value" id="stat-sent">—</div>
+        <div class="stat-sub">enviadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Novas</div>
+        <div class="stat-value" id="stat-novas">—</div>
+        <div class="stat-sub">pendentes de aplicação</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ignoradas</div>
+        <div class="stat-value" id="stat-ignoradas">—</div>
+        <div class="stat-sub">duplicatas / fora perfil</div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: FILTROS ── -->
+    <div class="page active" id="page-filtros">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Configurar <span>Filtros</span></div>
+          <div class="page-sub">Módulo 1 — defina os critérios antes de rodar o agente</div>
+        </div>
+        <button class="run-btn" id="run-btn" onclick="runAgent()">▶ Rodar Agente</button>
+      </div>
+
+      <div class="grid2">
+        <div class="section-card">
+          <div class="section-title">🌐 Plataformas</div>
+          <div class="platform-grid">
+            <div class="platform-item active" data-plat="linkedin" onclick="togglePlatform(this)">💼 LinkedIn<span class="platform-check">✓</span></div>
+            <div class="platform-item active" data-plat="infojobs" onclick="togglePlatform(this)">🔎 InfoJobs<span class="platform-check">✓</span></div>
+            
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📈 Nível & Modalidade</div>
+          <div class="field">
+            <div class="field-label">Nível (vazio = todos)</div>
+            <div class="level-grid">
+              <div class="level-btn" data-nivel="Estágio" onclick="toggleBtn(this)">Estágio</div>
+              <div class="level-btn" data-nivel="Júnior" onclick="toggleBtn(this)">Júnior</div>
+              <div class="level-btn" data-nivel="Pleno" onclick="toggleBtn(this)">Pleno</div>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px;">
+            <div class="field-label">Modalidade (vazio = todas)</div>
+            <div class="level-grid">
+              <div class="level-btn" data-modal="Remoto" onclick="toggleBtn(this)">Remoto</div>
+              <div class="level-btn" data-modal="Híbrido" onclick="toggleBtn(this)">Híbrido</div>
+              <div class="level-btn" data-modal="Presencial" onclick="toggleBtn(this)">Presencial</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="section-card">
+          <div class="section-title">🏷️ Keywords & Blacklist</div>
+          <div class="field">
+            <div class="field-label">Keywords (Enter para adicionar)</div>
+            <div style="display:flex;gap:8px;">
+              <input class="field-input" id="keyword-input" placeholder="ex: Analista de Dados, Python..." style="flex:1;min-width:0;" onkeydown="if(event.key==='Enter')addKeyword()">
+              <button onclick="addKeyword()" style="background:var(--accent);border:none;color:white;padding:9px 14px;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;flex-shrink:0;">+</button>
+            </div>
+            <div class="tags-container" id="tags-container"></div>
+          </div>
+          <div class="field" style="margin-top:12px;">
+            <div class="field-label">Blacklist</div>
+            <div style="display:flex;gap:8px;">
+              <input class="field-input" id="blacklist-input" placeholder="ex: Sênior, PJ Obrigatório..." style="flex:1;min-width:0;" onkeydown="if(event.key==='Enter')addBlacklist()">
+              <button onclick="addBlacklist()" style="background:#1e1e2e;border:1px solid var(--border);color:#ef4444;padding:9px 14px;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;flex-shrink:0;">✕</button>
+            </div>
+            <div class="tags-container" id="blacklist-container"></div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">💰 Salário & Localização</div>
+          <div class="salary-display" id="salary-display">R$ 0</div>
+          <input type="range" min="0" max="10000" step="500" value="0" id="salary-slider" oninput="updateSalary(this.value)">
+          <div class="range-labels"><span>R$ 0 (sem filtro)</span><span>R$ 10.000</span></div>
+          <div class="field" style="margin-top:18px;">
+            <div class="field-label">Localização</div>
+            <input class="field-input" id="input-loc" value="São Paulo, SP" placeholder="cidade ou 'Remoto'">
+          </div>
+          <div class="field">
+            <div class="field-label">Email para notificações</div>
+            <input class="field-input" id="input-email" placeholder="seu@email.com">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="section-card">
+          <div class="section-title">🤖 Comportamento do Agente</div>
+          <div class="toggle-row">
+            <div><div class="toggle-label">Notificar antes de aplicar</div><div class="toggle-sub">Envia email com lista para aprovar</div></div>
+            <div class="toggle on" id="tog-notificar" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-label">Pular vagas duplicadas</div><div class="toggle-sub">Ignora candidaturas anteriores</div></div>
+            <div class="toggle on" id="tog-duplicatas" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-label">Salvar log de buscas</div><div class="toggle-sub">Registra no banco local (SQLite)</div></div>
+            <div class="toggle on" id="tog-log" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="field" style="margin-top:14px;">
+            <div class="field-label">Frequência de execução</div>
+            <div class="schedule-row" id="schedule-row">
+              <div class="schedule-btn" data-h="1" onclick="setSchedule(this)">1h</div>
+              <div class="schedule-btn active" data-h="2" onclick="setSchedule(this)">2h</div>
+              <div class="schedule-btn" data-h="4" onclick="setSchedule(this)">4h</div>
+              <div class="schedule-btn" data-h="6" onclick="setSchedule(this)">6h</div>
+              <div class="schedule-btn" data-h="12" onclick="setSchedule(this)">12h</div>
+            </div>
+          </div>
+          <button class="save-btn" onclick="saveConfig()">💾 Salvar Configuração</button>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📡 Status da API</div>
+          <div id="api-status-detail">
+            <div class="loading">Conectando à API...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: VAGAS ── -->
+    <div class="page" id="page-vagas">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Vagas <span>Encontradas</span></div>
+          <div class="page-sub">Todas as vagas coletadas pelo agente</div>
+        </div>
+        <button class="run-btn" onclick="runAgent()">▶ Rodar Agente</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-chip active" data-status="all" onclick="filtrarVagas(this)">Todas <span class="filter-count" id="fc-all">0</span></div>
+        <div class="filter-chip" data-status="nova" onclick="filtrarVagas(this)">Novas <span class="filter-count" id="fc-nova">0</span></div>
+        <div class="filter-chip" data-status="aplicada" onclick="filtrarVagas(this)">Aplicadas <span class="filter-count" id="fc-aplicada">0</span></div>
+        <div class="filter-chip" data-plat="LinkedIn" onclick="filtrarPlat(this)">💼 LinkedIn</div>
+        <div class="filter-chip" data-plat="InfoJobs" onclick="filtrarPlat(this)">🔎 InfoJobs</div>
+      </div>
+
+      <div id="vagas-container">
+        <div class="loading">Carregando vagas...</div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: LOG ── -->
+    <div class="page" id="page-log">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Log de <span>Atividade</span></div>
+          <div class="page-sub">Histórico de execuções do agente</div>
+        </div>
+        <button class="run-btn" onclick="runAgent()">▶ Rodar Agente</button>
+      </div>
+      <div class="section-card">
+        <div class="section-title">📡 Eventos Recentes</div>
+        <div id="log-container">
+          <div class="loading">Carregando log...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let todasVagas = [];
+let filtroStatus = 'all';
+let filtroPlat = null;
+let configAtual = {};
+
+// ── NAVEGAÇÃO ──
+function navegarPara(pagina) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + pagina).classList.add('active');
+  document.getElementById('nav-' + pagina).classList.add('active');
+  if (pagina === 'vagas') carregarVagas();
+  if (pagina === 'log') carregarLog();
+}
+
+// ── DRAWER ──
+function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+// ── TOAST ──
+function showToast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (tipo === 'error' ? ' error' : '') + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── API ──
+const API = 'http://localhost:8000';
+
+async function carregarStats() {
+  try {
+    const res = await fetch(API + '/status');
+    const data = await res.json();
+    const b = data.banco;
+    document.getElementById('stat-total').textContent = b.total ?? '—';
+    document.getElementById('stat-sent').textContent = b.aplicadas ?? '—';
+    document.getElementById('stat-novas').textContent = b.novas ?? '—';
+    document.getElementById('stat-ignoradas').textContent = b.ignoradas ?? '—';
+    document.getElementById('status-txt').textContent = 'Agente ativo';
+    document.getElementById('drawer-status-txt').textContent = 'Agente ativo';
+
+    const prox = data.proximo_ciclo ? new Date(data.proximo_ciclo).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
+    document.getElementById('stat-prox').textContent = 'próximo ciclo: ' + prox;
+
+    // Status card
+    const byPlat = b.por_plataforma || {};
+    let platHtml = Object.entries(byPlat).map(([k,v]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--muted)">${k}</span><span>${v} vagas</span></div>`).join('');
+    document.getElementById('api-status-detail').innerHTML = `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--muted)">Status</span><span style="color:var(--accent3)">● Online</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--muted)">Em execução</span><span>${data.em_execucao ? '⏳ Sim' : 'Não'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--muted)">Próximo ciclo</span><span>${prox}</span></div>
+      ${platHtml}
+    `;
+  } catch(e) {
+    document.getElementById('status-txt').textContent = 'API offline';
+    document.getElementById('drawer-status-txt').textContent = 'API offline';
+    document.getElementById('api-status-detail').innerHTML = '<div style="color:var(--danger);font-size:12px;padding:8px 0;">❌ API offline — certifique-se que o scheduler está rodando.</div>';
+  }
+}
+
+async function carregarVagas(novasEncontradas = null) {
+  if (novasEncontradas === null) {
+    // Chamada manual — mostra loading
+    document.getElementById('vagas-container').innerHTML = '<div class="loading">Carregando vagas...</div>';
+  }
+  try {
+    const res = await fetch(API + '/vagas?limit=200');
+    const data = await res.json();
+    todasVagas = data.vagas || [];
+    renderVagas(novasEncontradas);
+    atualizarContadores();
+  } catch(e) {
+    document.getElementById('vagas-container').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <p>Não foi possível conectar à API.<br>Verifique se o scheduler está rodando.</p>
+      </div>
+    `;
+  }
+}
+
+function renderVagas(novasEncontradas = null) {
+  let lista = todasVagas;
+  if (filtroStatus !== 'all') lista = lista.filter(v => v.status === filtroStatus);
+  if (filtroPlat) lista = lista.filter(v => v.plataforma === filtroPlat);
+
+  // Estado vazio — diferencia "sem vagas novas" de "sem vagas nunca"
+  if (lista.length === 0) {
+    if (novasEncontradas === 0) {
+      document.getElementById('vagas-container').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">😴</div>
+          <p>Nenhuma vaga nova encontrada neste ciclo.<br>
+          <span style="color:var(--muted);font-size:10px;">O agente verificou todas as plataformas e não encontrou novidades.</span></p>
+        </div>
+      `;
+    } else {
+      document.getElementById('vagas-container').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <p>Nenhuma vaga encontrada ainda.<br>
+          <span style="color:var(--muted);font-size:10px;">Clique em "Rodar Agente" para iniciar a busca.</span></p>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  const html = lista.map(v => {
+    const platClass = 'plat-' + (v.plataforma || '').toLowerCase();
+    const nivel = v.nivel ? `<span class="vaga-tag nivel">${v.nivel}</span>` : '';
+    const modalidade = v.modalidade ? `<span class="vaga-tag">${v.modalidade}</span>` : '';
+    const salario = v.salario ? `<span class="vaga-tag">💰 ${v.salario}</span>` : '';
+    const statusHtml = v.status === 'aplicada'
+      ? '<span class="vaga-status aplicada">Aplicada</span>'
+      : '<span class="vaga-status nova">Nova</span>';
+    const linkHtml = v.url
+      ? `<a class="aplicar-btn" href="${v.url}" target="_blank" rel="noopener">Aplicar agora →</a>`
+      : '';
+    return `
+      <div class="vaga-card">
+        <div class="vaga-header">
+          <div class="vaga-titulo">${v.titulo || 'Sem título'}</div>
+          ${statusHtml}
+        </div>
+        <div class="vaga-empresa">${v.empresa || 'Empresa não informada'}${v.localizacao ? ' · ' + v.localizacao : ''}</div>
+        <div class="vaga-tags" style="margin-bottom:12px;">
+          <span class="vaga-tag ${platClass}">${v.plataforma || ''}</span>
+          ${nivel}${modalidade}${salario}
+        </div>
+        ${linkHtml}
+      </div>
+    `;
+  }).join('');
+  document.getElementById('vagas-container').innerHTML = '<div class="vagas-list">' + html + '</div>';
+}
+
+function atualizarContadores() {
+  document.getElementById('fc-all').textContent = todasVagas.length;
+  document.getElementById('fc-nova').textContent = todasVagas.filter(v => v.status === 'nova').length;
+  document.getElementById('fc-aplicada').textContent = todasVagas.filter(v => v.status === 'aplicada').length;
+}
+
+function filtrarVagas(el) {
+  document.querySelectorAll('[data-status]').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  filtroStatus = el.dataset.status;
+  renderVagas();
+}
+
+function filtrarPlat(el) {
+  if (el.classList.contains('active')) {
+    el.classList.remove('active');
+    filtroPlat = null;
+  } else {
+    document.querySelectorAll('[data-plat]').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    filtroPlat = el.dataset.plat;
+  }
+  renderVagas();
+}
+
+async function carregarLog() {
+  const container = document.getElementById('log-container');
+  try {
+    const res = await fetch(API + '/status');
+    const data = await res.json();
+    const b = data.banco;
+    const prox = data.proximo_ciclo ? new Date(data.proximo_ciclo).toLocaleString('pt-BR') : '—';
+    container.innerHTML = `
+      <div class="log-item"><div class="log-dot" style="background:var(--accent3)"></div><div class="log-time">agora</div><div class="log-text">API online · ${b.total} vagas no banco · próximo ciclo: ${prox}</div></div>
+      <div class="log-item"><div class="log-dot" style="background:var(--accent2)"></div><div class="log-time">banco</div><div class="log-text">Novas: ${b.novas} · Aplicadas: ${b.aplicadas} · Ignoradas: ${b.ignoradas}</div></div>
+      ${Object.entries(b.por_plataforma || {}).map(([k,v]) => `<div class="log-item"><div class="log-dot" style="background:var(--warn)"></div><div class="log-time">plat.</div><div class="log-text">${k}: ${v} vagas coletadas</div></div>`).join('')}
+    `;
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:8px 0;">❌ API offline.</div>';
+  }
+}
+
+// ── RUN AGENT ──
+let pollingInterval = null;
+let totalAntesDeRodar = 0;
+
+async function runAgent() {
+  // Desativa todos os botões Rodar Agente
+  document.querySelectorAll('.run-btn').forEach(b => { b.disabled = true; b.textContent = '⏳ Rodando...'; });
+
+  try {
+    // Salva total atual pra comparar depois
+    const statusAntes = await fetch(API + '/status').then(r => r.json()).catch(() => null);
+    totalAntesDeRodar = statusAntes?.banco?.total ?? 0;
+
+    const res = await fetch(API + '/rodar', { method: 'POST' });
+    if (!res.ok) throw new Error('Erro ao iniciar');
+
+    showToast('⏳ Agente iniciado — aguardando resultado...');
+
+    // Navega pra aba de vagas e mostra loading
+    navegarPara('vagas');
+    document.getElementById('vagas-container').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon" style="animation: spin 1s linear infinite; display:inline-block;">⏳</div>
+        <p style="margin-top:12px;">Buscando vagas nas plataformas...<br><span style="color:var(--muted);font-size:10px;">Isso pode levar 30–60 segundos</span></p>
+      </div>
+    `;
+
+    // Polling: verifica a cada 5s se o agente terminou
+    let tentativas = 0;
+    pollingInterval = setInterval(async () => {
+      tentativas++;
+      try {
+        const status = await fetch(API + '/status').then(r => r.json());
+        const emExecucao = status?.em_execucao;
+        const totalAgora = status?.banco?.total ?? 0;
+
+        if (!emExecucao || tentativas > 24) {
+          // Pipeline terminou
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          document.querySelectorAll('.run-btn').forEach(b => { b.disabled = false; b.textContent = '▶ Rodar Agente'; });
+
+          const novas = totalAgora - totalAntesDeRodar;
+          carregarStats();
+          carregarVagas(novas);
+
+          if (novas > 0) {
+            showToast(`✅ ${novas} nova${novas > 1 ? 's vagas encontradas' : ' vaga encontrada'}!`);
+          } else {
+            showToast('ℹ️ Nenhuma vaga nova encontrada neste ciclo.');
+          }
+        }
+      } catch(e) {
+        // API momentaneamente indisponível, continua tentando
+      }
+    }, 5000);
+
+  } catch(e) {
+    showToast('❌ Não foi possível conectar à API', 'error');
+    document.querySelectorAll('.run-btn').forEach(b => { b.disabled = false; b.textContent = '▶ Rodar Agente'; });
+  }
+}
+
+// ── CONFIG ──
+async function carregarConfig() {
+  try {
+    const res = await fetch(API + '/status');
+    // Config vem do arquivo, não da API — usa defaults visuais
+  } catch(e) {}
+}
+
+async function saveConfig() {
+  const keywords = [...document.querySelectorAll('#tags-container .tag')].map(t => t.textContent.replace('✕','').trim());
+  const blacklist = [...document.querySelectorAll('#blacklist-container .tag')].map(t => t.textContent.replace('✕','').trim());
+  const plataformas = [...document.querySelectorAll('.platform-item.active')].map(p => p.dataset.plat);
+  const niveis = [...document.querySelectorAll('[data-nivel].active')].map(b => b.dataset.nivel);
+  const modalidades = [...document.querySelectorAll('[data-modal].active')].map(b => b.dataset.modal);
+  const salario = parseInt(document.getElementById('salary-slider').value) || 0;
+  const localizacao = document.getElementById('input-loc').value.trim();
+  const email = document.getElementById('input-email').value.trim();
+  const frequencia = parseInt(document.querySelector('.schedule-btn.active')?.dataset.h || 2);
+
+  const config = {
+    keywords, blacklist, plataformas,
+    niveis, modalidades,
+    salario_minimo: salario,
+    localizacao, email,
+    frequencia_horas: frequencia,
+    auto_aplicar: false,
+    notificar_antes: document.getElementById('tog-notificar').classList.contains('on'),
+    pular_duplicatas: document.getElementById('tog-duplicatas').classList.contains('on'),
+    salvar_log: document.getElementById('tog-log').classList.contains('on'),
+  };
+
+  try {
+    const res = await fetch(API + '/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    if (res.ok) showToast('✅ Configuração salva!');
+    else showToast('❌ Erro ao salvar', 'error');
+  } catch(e) {
+    showToast('❌ API offline — não foi possível salvar', 'error');
+  }
+}
+
+// ── HELPERS FORM ──
+function togglePlatform(el) {
+  el.classList.toggle('active');
+  el.querySelector('.platform-check').textContent = el.classList.contains('active') ? '✓' : '';
+}
+
+function toggleBtn(el) { el.classList.toggle('active'); }
+
+function updateSalary(val) {
+  const v = parseInt(val);
+  document.getElementById('salary-display').textContent = v === 0 ? 'Sem filtro' : 'R$ ' + v.toLocaleString('pt-BR');
+  const pct = (v / 10000) * 100;
+  document.getElementById('salary-slider').style.background = `linear-gradient(to right, var(--accent3) 0%, var(--accent3) ${pct}%, var(--border) ${pct}%)`;
+}
+
+function addKeyword() {
+  const input = document.getElementById('keyword-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const tag = document.createElement('div');
+  tag.className = 'tag active';
+  tag.innerHTML = `${val} <span class="tag-x" onclick="removeTag(this)">✕</span>`;
+  document.getElementById('tags-container').appendChild(tag);
+  input.value = '';
+}
+
+function addBlacklist() {
+  const input = document.getElementById('blacklist-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const tag = document.createElement('div');
+  tag.className = 'tag';
+  tag.style.cssText = 'color:#ef4444;border-color:rgba(239,68,68,0.3);';
+  tag.innerHTML = `${val} <span class="tag-x" onclick="removeTag(this)">✕</span>`;
+  document.getElementById('blacklist-container').appendChild(tag);
+  input.value = '';
+}
+
+function removeTag(el) { el.closest('.tag').remove(); }
+
+function setSchedule(el) {
+  document.querySelectorAll('.schedule-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── INIT ──
+function init() {
+  // Popula keywords e blacklist default
+  const defaultKeywords = ['Data Analyst', 'Data Engineer', 'Analista de Dados', 'Python', 'SQL', 'Frontend', 'React'];
+  const defaultBlacklist = ['Sênior', 'Senior', 'PJ Obrigatório', 'Gerente', 'Diretor'];
+  defaultKeywords.forEach(k => {
+    const tag = document.createElement('div');
+    tag.className = 'tag active';
+    tag.innerHTML = `${k} <span class="tag-x" onclick="removeTag(this)">✕</span>`;
+    document.getElementById('tags-container').appendChild(tag);
+  });
+  defaultBlacklist.forEach(k => {
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.style.cssText = 'color:#ef4444;border-color:rgba(239,68,68,0.3);';
+    tag.innerHTML = `${k} <span class="tag-x" onclick="removeTag(this)">✕</span>`;
+    document.getElementById('blacklist-container').appendChild(tag);
+  });
+
+  carregarStats();
+  setInterval(carregarStats, 30000);
+}
+
+init();
+</script>
+</body>
+</html>

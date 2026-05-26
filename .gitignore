@@ -1,0 +1,27 @@
+# Credenciais — NUNCA no git
+email_config.json
+credentials.json
+credenciais.json
+config.json
+catho_debug.html
+infojobs_debug.html
+inspecionar.py
+
+# Banco e dados temporários
+job_agent.db
+vagas_encontradas.json
+vagas_aprovadas.json
+vagas_para_aplicar.json
+relatorio_aplicacoes.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Sistema
+.DS_Store
+Thumbs.db
